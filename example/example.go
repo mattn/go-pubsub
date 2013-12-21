@@ -19,12 +19,19 @@ func main() {
 		fmt.Println("string subscriber: ", s)
 	})
 	mc.Sub(func(f *foo) {
-		fmt.Println("foo subscriber: ", f.bar)
+		fmt.Println("foo subscriber1: ", f.bar)
 	})
+	var f2 func(f *foo)
+	f2 = func(f *foo) {
+		fmt.Println("foo subscriber2: ", f.bar)
+		mc.Leave(f2)
+	}
+	mc.Sub(f2)
 
 	mc.Pub(1)
 	mc.Pub("hello")
 	mc.Pub(2)
+	mc.Pub(&foo{"bar!"})
 	mc.Pub(&foo{"bar!"})
 
 	time.Sleep(5 * time.Second)

@@ -39,6 +39,18 @@ func (mc *MultiChannel) Sub(f interface{}) error {
 	return nil
 }
 
+func (mc *MultiChannel) Leave(f interface{}) {
+    result := make([]interface{}, 0, len(mc.f))
+    last := 0
+    for i, v := range mc.f {
+        if reflect.ValueOf(v).Pointer() == reflect.ValueOf(f).Pointer() {
+            result = append(result, mc.f[last:i]...)
+            last = i + 1
+        }
+    }
+    mc.f = append(result, mc.f[last:]...)
+}
+
 func (mc *MultiChannel) Pub(v interface{}) {
 	mc.c <-v
 }
