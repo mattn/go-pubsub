@@ -21,12 +21,16 @@ func main() {
 	mc.Sub(func(f *foo) {
 		fmt.Println("foo subscriber1: ", f.bar)
 	})
-	var f2 func(f *foo)
-	f2 = func(f *foo) {
+	mc.Sub(func(f *foo) {
 		fmt.Println("foo subscriber2: ", f.bar)
-		mc.Leave(f2)
+		mc.Leave(nil)
+	})
+	var f3 func(f *foo)
+	f3 = func(f *foo) {
+		fmt.Println("foo subscriber3: ", f.bar)
+		mc.Leave(f3)
 	}
-	mc.Sub(f2)
+	mc.Sub(f3)
 
 	mc.Pub(1)
 	mc.Pub("hello")

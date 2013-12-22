@@ -3,6 +3,7 @@ package multichannel
 import (
 	"errors"
 	"reflect"
+	"runtime"
 )
 
 type MultiChannel struct {
@@ -40,10 +41,18 @@ func (mc *MultiChannel) Sub(f interface{}) error {
 }
 
 func (mc *MultiChannel) Leave(f interface{}) {
+	var fp uintptr
+	if f == nil {
+		if pc, _, _, ok := runtime.Caller(1); ok {
+			fp = runtime.FuncForPC(pc).Entry()
+		}
+	} else {
+		fp = reflect.ValueOf(f).Pointer()
+	}
     result := make([]interface{}, 0, len(mc.f))
     last := 0
     for i, v := range mc.f {
-        if reflect.ValueOf(v).Pointer() == reflect.ValueOf(f).Pointer() {
+        if reflect.ValueOf(v).Pointer() == fp {
             result = append(result, mc.f[last:i]...)
             last = i + 1
         }
