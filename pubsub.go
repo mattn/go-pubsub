@@ -6,11 +6,13 @@ import (
 	"runtime"
 )
 
+// PubSub contains channel and callbacks.
 type PubSub struct {
 	c chan interface{}
 	f []interface{}
 }
 
+// New return new PubSub intreface.
 func New() *PubSub {
 	ps := new(PubSub)
 	ps.c = make(chan interface{})
@@ -28,6 +30,7 @@ func New() *PubSub {
 	return ps
 }
 
+// Sub subscribe to the PubSub.
 func (ps *PubSub) Sub(f interface{}) error {
 	rf := reflect.ValueOf(f)
 	if rf.Kind() != reflect.Func {
@@ -40,6 +43,7 @@ func (ps *PubSub) Sub(f interface{}) error {
 	return nil
 }
 
+// Leave unsubscribe to the PubSub.
 func (ps *PubSub) Leave(f interface{}) {
 	var fp uintptr
 	if f == nil {
@@ -60,6 +64,7 @@ func (ps *PubSub) Leave(f interface{}) {
     ps.f = append(result, ps.f[last:]...)
 }
 
+// Pub publish to the PubSub.
 func (ps *PubSub) Pub(v interface{}) {
 	ps.c <-v
 }
