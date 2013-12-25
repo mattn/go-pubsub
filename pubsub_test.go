@@ -47,3 +47,25 @@ func TestStruct(t *testing.T) {
 		t.Fatalf("Expected %v, but %d:", "hello world", f.m)
 	}
 }
+
+func TestOnly(t *testing.T) {
+	doneInt := make(chan int)
+	doneF := make(chan *F)
+	ps := pubsub.New()
+	ps.Sub(func(i int) {
+		doneInt <-i
+	})
+	ps.Sub(func(f *F) {
+		doneF <-f
+	})
+	ps.Pub(&F{"hello world"})
+	ps.Pub(2)
+	i := <-doneInt
+	f := <-doneF
+	if f.m != "hello world" {
+		t.Fatalf("Expected %v, but %d:", "hello world", f.m)
+	}
+	if i != 2 {
+		t.Fatalf("Expected %v, but %d:", 2, f.m)
+	}
+}
