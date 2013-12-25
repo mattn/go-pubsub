@@ -21,12 +21,14 @@ import (
 	"errors"
 	"reflect"
 	"runtime"
+	"sync"
 )
 
 // PubSub contains channel and callbacks.
 type PubSub struct {
 	c chan interface{}
 	f []interface{}
+	m sync.Mutex
 }
 
 // New return new PubSub intreface.
@@ -36,12 +38,16 @@ func New() *PubSub {
 	go func() {
 		for v := range ps.c {
 			rv := reflect.ValueOf(v)
+			ps.m.Lock()
 			for _, f := range ps.f {
 				rf := reflect.ValueOf(f)
 				if rv.Type() == reflect.ValueOf(f).Type().In(0) {
-					rf.Call([]reflect.Value{rv})
+					go func(rf reflect.Value) {
+						rf.Call([]reflect.Value{rv})
+					}(rf)
 				}
 			}
+			ps.m.Unlock()
 		}
 	}()
 	return ps
@@ -56,6 +62,8 @@ func (ps *PubSub) Sub(f interface{}) error {
 	if rf.Type().NumIn() != 1 {
 		return errors.New("Number of arguments should be 1")
 	}
+	ps.m.Lock()
+	defer ps.m.Unlock()
 	ps.f = append(ps.f, f)
 	return nil
 }
@@ -70,6 +78,8 @@ func (ps *PubSub) Leave(f interface{}) {
 	} else {
 		fp = reflect.ValueOf(f).Pointer()
 	}
+	ps.m.Lock()
+	defer ps.m.Unlock()
 	result := make([]interface{}, 0, len(ps.f))
 	last := 0
 	for i, v := range ps.f {
