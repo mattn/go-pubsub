@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/mattn/go-multichannel"
+	"github.com/mattn/go-pubsub"
 	"time"
 )
 
@@ -11,32 +11,32 @@ type foo struct {
 }
 
 func main() {
-	mc := multichannel.New()
-	mc.Sub(func(i int) {
+	ps := pubsub.New()
+	ps.Sub(func(i int) {
 		fmt.Println("int subscriber: ", i)
 	})
-	mc.Sub(func(s string) {
+	ps.Sub(func(s string) {
 		fmt.Println("string subscriber: ", s)
 	})
-	mc.Sub(func(f *foo) {
+	ps.Sub(func(f *foo) {
 		fmt.Println("foo subscriber1: ", f.bar)
 	})
-	mc.Sub(func(f *foo) {
+	ps.Sub(func(f *foo) {
 		fmt.Println("foo subscriber2: ", f.bar)
-		mc.Leave(nil)
+		ps.Leave(nil)
 	})
 	var f3 func(f *foo)
 	f3 = func(f *foo) {
 		fmt.Println("foo subscriber3: ", f.bar)
-		mc.Leave(f3)
+		ps.Leave(f3)
 	}
-	mc.Sub(f3)
+	ps.Sub(f3)
 
-	mc.Pub(1)
-	mc.Pub("hello")
-	mc.Pub(2)
-	mc.Pub(&foo{"bar!"})
-	mc.Pub(&foo{"bar!"})
+	ps.Pub(1)
+	ps.Pub("hello")
+	ps.Pub(2)
+	ps.Pub(&foo{"bar!"})
+	ps.Pub(&foo{"bar!"})
 
 	time.Sleep(5 * time.Second)
 }
