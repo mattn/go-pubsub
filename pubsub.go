@@ -53,18 +53,18 @@ func (ps *PubSub) Leave(f interface{}) {
 	} else {
 		fp = reflect.ValueOf(f).Pointer()
 	}
-    result := make([]interface{}, 0, len(ps.f))
-    last := 0
-    for i, v := range ps.f {
-        if reflect.ValueOf(v).Pointer() == fp {
-            result = append(result, ps.f[last:i]...)
-            last = i + 1
-        }
-    }
-    ps.f = append(result, ps.f[last:]...)
+	result := make([]interface{}, 0, len(ps.f))
+	last := 0
+	for i, v := range ps.f {
+		if reflect.ValueOf(v).Pointer() == fp {
+			result = append(result, ps.f[last:i]...)
+			last = i + 1
+		}
+	}
+	ps.f = append(result, ps.f[last:]...)
 }
 
 // Pub publish to the PubSub.
 func (ps *PubSub) Pub(v interface{}) {
-	ps.c <-v
+	ps.c <- v
 }
