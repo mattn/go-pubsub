@@ -85,3 +85,8 @@ func (ps *PubSub) Leave(f interface{}) {
 func (ps *PubSub) Pub(v interface{}) {
 	ps.c <- v
 }
+
+func (ps *PubSub) Close() {
+	close(ps.c)
+	ps.f = nil
+}
