@@ -1,3 +1,20 @@
+/*
+This package provides a portable intaface to pubsub model.
+PubSub can publish/subscribe/unsubscribe messages for all.
+To subscribe:
+
+	ps := pubsub.New()
+	ps.Sub(func(s string) {
+		fmt.Println(s)
+	})
+
+To publish:
+
+	ps.Pub("hello world")
+
+The message are allowed to pass any types, and passing to subscribers which
+can accept the type for the argument of callback.
+*/
 package pubsub
 
 import (
