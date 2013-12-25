@@ -15,6 +15,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("Listing", l.Addr().String())
+	log.Println("Clients can connect to this server like follow:")
+	log.Println("  $ telnet server:5555")
 	for {
 		c, err := l.Accept()
 		if err != nil {
