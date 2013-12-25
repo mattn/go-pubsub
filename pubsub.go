@@ -96,6 +96,7 @@ func (ps *PubSub) Pub(v interface{}) {
 	ps.c <- v
 }
 
+// Close closes PubSub. To inspect unbsubscribing for another subscruber, you must create message structure to notify them. After publish notifycations, Close should be called.
 func (ps *PubSub) Close() {
 	close(ps.c)
 	ps.f = nil
