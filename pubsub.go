@@ -19,22 +19,42 @@ package pubsub
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"runtime"
 	"sync"
 )
+
+type PubSubError struct {
+	f interface{}
+	e interface{}
+}
+
+func (pse *PubSubError) String() string {
+	return fmt.Sprintf("%v: %v", pse.f, pse.e)
+}
+
+func (pse *PubSubError) Error() string {
+	return fmt.Sprint(pse.e)
+}
+
+func (pse *PubSubError) Subscriber() interface{} {
+	return pse.f
+}
 
 // PubSub contains channel and callbacks.
 type PubSub struct {
 	c chan interface{}
 	f []interface{}
 	m sync.Mutex
+	e chan error
 }
 
 // New return new PubSub intreface.
 func New() *PubSub {
 	ps := new(PubSub)
 	ps.c = make(chan interface{})
+	ps.e = make(chan error)
 	go func() {
 		for v := range ps.c {
 			rv := reflect.ValueOf(v)
@@ -42,15 +62,24 @@ func New() *PubSub {
 			for _, f := range ps.f {
 				rf := reflect.ValueOf(f)
 				if rv.Type() == reflect.ValueOf(f).Type().In(0) {
-					go func(rf reflect.Value) {
+					go func(f interface{}, rf reflect.Value) {
+						defer func() {
+							if err := recover(); err != nil {
+								ps.e <-&PubSubError{f, err}
+							}
+						}()
 						rf.Call([]reflect.Value{rv})
-					}(rf)
+					}(f, rf)
 				}
 			}
 			ps.m.Unlock()
 		}
 	}()
 	return ps
+}
+
+func (ps *PubSub) Error() chan error {
+	return ps.e
 }
 
 // Sub subscribe to the PubSub.
