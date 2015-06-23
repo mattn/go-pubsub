@@ -42,10 +42,19 @@ func (pse *PubSubError) Subscriber() interface{} {
 	return pse.f
 }
 
+type wrap struct {
+	f interface{}
+}
+
+func NewWrap(f interface{}) *wrap {
+	return &wrap{f: f}
+}
+
 // PubSub contains channel and callbacks.
 type PubSub struct {
 	c chan interface{}
 	f []interface{}
+	w []*wrap
 	m sync.Mutex
 	e chan error
 }
@@ -55,6 +64,15 @@ func New() *PubSub {
 	ps := new(PubSub)
 	ps.c = make(chan interface{})
 	ps.e = make(chan error)
+	call := func(f interface{}, rf reflect.Value, in []reflect.Value) {
+		defer func() {
+			if err := recover(); err != nil {
+				ps.e <- &PubSubError{f, err}
+			}
+		}()
+		rf.Call(in)
+	}
+
 	go func() {
 		for v := range ps.c {
 			rv := reflect.ValueOf(v)
@@ -62,14 +80,13 @@ func New() *PubSub {
 			for _, f := range ps.f {
 				rf := reflect.ValueOf(f)
 				if rv.Type() == reflect.ValueOf(f).Type().In(0) {
-					go func(f interface{}, rf reflect.Value) {
-						defer func() {
-							if err := recover(); err != nil {
-								ps.e <-&PubSubError{f, err}
-							}
-						}()
-						rf.Call([]reflect.Value{rv})
-					}(f, rf)
+					go call(f, rf, []reflect.Value{rv})
+				}
+			}
+			for _, w := range ps.w { // wrapped functions
+				rf := reflect.ValueOf(w.f)
+				if rv.Type() == reflect.ValueOf(w.f).Type().In(0) {
+					go call(w.f, rf, []reflect.Value{rv})
 				}
 			}
 			ps.m.Unlock()
@@ -84,7 +101,12 @@ func (ps *PubSub) Error() chan error {
 
 // Sub subscribe to the PubSub.
 func (ps *PubSub) Sub(f interface{}) error {
-	rf := reflect.ValueOf(f)
+	check := f
+	w, wrapped := f.(*wrap)
+	if wrapped { // check wrapped function instead
+		check = w.f
+	}
+	rf := reflect.ValueOf(check)
 	if rf.Kind() != reflect.Func {
 		return errors.New("Not a function")
 	}
@@ -93,7 +115,11 @@ func (ps *PubSub) Sub(f interface{}) error {
 	}
 	ps.m.Lock()
 	defer ps.m.Unlock()
-	ps.f = append(ps.f, f)
+	if wrapped { // append to wrapped set
+		ps.w = append(ps.w, w)
+	} else {
+		ps.f = append(ps.f, f)
+	}
 	return nil
 }
 
@@ -109,15 +135,27 @@ func (ps *PubSub) Leave(f interface{}) {
 	}
 	ps.m.Lock()
 	defer ps.m.Unlock()
-	result := make([]interface{}, 0, len(ps.f))
-	last := 0
-	for i, v := range ps.f {
-		if reflect.ValueOf(v).Pointer() == fp {
-			result = append(result, ps.f[last:i]...)
-			last = i + 1
+	if _, wrapped := f.(*wrap); wrapped {
+		result := make([]*wrap, 0, len(ps.w))
+		last := 0
+		for i, v := range ps.w {
+			if reflect.ValueOf(v).Pointer() == fp {
+				result = append(result, ps.w[last:i]...)
+				last = i + 1
+			}
 		}
+		ps.w = append(result, ps.w[last:]...)
+	} else {
+		result := make([]interface{}, 0, len(ps.f))
+		last := 0
+		for i, v := range ps.f {
+			if reflect.ValueOf(v).Pointer() == fp {
+				result = append(result, ps.f[last:i]...)
+				last = i + 1
+			}
+		}
+		ps.f = append(result, ps.f[last:]...)
 	}
-	ps.f = append(result, ps.f[last:]...)
 }
 
 // Pub publish to the PubSub.
@@ -129,4 +167,5 @@ func (ps *PubSub) Pub(v interface{}) {
 func (ps *PubSub) Close() {
 	close(ps.c)
 	ps.f = nil
+	ps.w = nil
 }
