@@ -9,7 +9,7 @@ func TestInt(t *testing.T) {
 	done := make(chan int)
 	ps := pubsub.New()
 	ps.Sub(func(i int) {
-		done <-i
+		done <- i
 	})
 	ps.Pub(1)
 	i := <-done
@@ -22,7 +22,7 @@ func TestString(t *testing.T) {
 	done := make(chan string)
 	ps := pubsub.New()
 	ps.Sub(func(s string) {
-		done <-s
+		done <- s
 	})
 	ps.Pub("hello world")
 	s := <-done
@@ -39,7 +39,7 @@ func TestStruct(t *testing.T) {
 	done := make(chan *F)
 	ps := pubsub.New()
 	ps.Sub(func(f *F) {
-		done <-f
+		done <- f
 	})
 	ps.Pub(&F{"hello world"})
 	f := <-done
@@ -53,10 +53,10 @@ func TestOnly(t *testing.T) {
 	doneF := make(chan *F)
 	ps := pubsub.New()
 	ps.Sub(func(i int) {
-		doneInt <-i
+		doneInt <- i
 	})
 	ps.Sub(func(f *F) {
-		doneF <-f
+		doneF <- f
 	})
 	ps.Pub(&F{"hello world"})
 	ps.Pub(2)
