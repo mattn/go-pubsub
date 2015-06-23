@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"runtime"
 	"sync"
 )
 
@@ -42,10 +41,20 @@ func (pse *PubSubError) Subscriber() interface{} {
 	return pse.f
 }
 
+type wrap struct {
+	f interface{}
+}
+
+func NewFunc(f interface{}) *wrap {
+	w := &wrap{}
+	w.f = f
+	return w
+}
+
 // PubSub contains channel and callbacks.
 type PubSub struct {
 	c chan interface{}
-	f []interface{}
+	w []*wrap
 	m sync.Mutex
 	e chan error
 }
@@ -59,17 +68,17 @@ func New() *PubSub {
 		for v := range ps.c {
 			rv := reflect.ValueOf(v)
 			ps.m.Lock()
-			for _, f := range ps.f {
-				rf := reflect.ValueOf(f)
-				if rv.Type() == reflect.ValueOf(f).Type().In(0) {
+			for _, w := range ps.w {
+				rf := reflect.ValueOf(w.f)
+				if rv.Type() == reflect.ValueOf(w.f).Type().In(0) {
 					go func(f interface{}, rf reflect.Value) {
 						defer func() {
 							if err := recover(); err != nil {
-								ps.e <-&PubSubError{f, err}
+								ps.e <- &PubSubError{f, err}
 							}
 						}()
 						rf.Call([]reflect.Value{rv})
-					}(f, rf)
+					}(w.f, rf)
 				}
 			}
 			ps.m.Unlock()
@@ -83,7 +92,8 @@ func (ps *PubSub) Error() chan error {
 }
 
 // Sub subscribe to the PubSub.
-func (ps *PubSub) Sub(f interface{}) error {
+func (ps *PubSub) Sub(w *wrap) error {
+	f := w.f
 	rf := reflect.ValueOf(f)
 	if rf.Kind() != reflect.Func {
 		return errors.New("Not a function")
@@ -93,31 +103,20 @@ func (ps *PubSub) Sub(f interface{}) error {
 	}
 	ps.m.Lock()
 	defer ps.m.Unlock()
-	ps.f = append(ps.f, f)
+	ps.w = append(ps.w, w)
 	return nil
 }
 
 // Leave unsubscribe to the PubSub.
-func (ps *PubSub) Leave(f interface{}) {
-	var fp uintptr
-	if f == nil {
-		if pc, _, _, ok := runtime.Caller(1); ok {
-			fp = runtime.FuncForPC(pc).Entry()
-		}
-	} else {
-		fp = reflect.ValueOf(f).Pointer()
-	}
+func (ps *PubSub) Leave(w *wrap) {
 	ps.m.Lock()
 	defer ps.m.Unlock()
-	result := make([]interface{}, 0, len(ps.f))
-	last := 0
-	for i, v := range ps.f {
-		if reflect.ValueOf(v).Pointer() == fp {
-			result = append(result, ps.f[last:i]...)
-			last = i + 1
+	for k, v := range ps.w {
+		if w == v {
+			ps.w = append(ps.w[:k], ps.w[k+1:]...)
+			return
 		}
 	}
-	ps.f = append(result, ps.f[last:]...)
 }
 
 // Pub publish to the PubSub.
@@ -128,5 +127,5 @@ func (ps *PubSub) Pub(v interface{}) {
 // Close closes PubSub. To inspect unbsubscribing for another subscruber, you must create message structure to notify them. After publish notifycations, Close should be called.
 func (ps *PubSub) Close() {
 	close(ps.c)
-	ps.f = nil
+	ps.w = nil
 }
