@@ -3,6 +3,7 @@ package pubsub_test
 import (
 	"github.com/mattn/go-pubsub"
 	"testing"
+	"time"
 )
 
 func TestInt(t *testing.T) {
@@ -67,5 +68,27 @@ func TestOnly(t *testing.T) {
 	}
 	if i != 2 {
 		t.Fatalf("Expected %v, but %d:", 2, f.m)
+	}
+}
+
+func TestClojure(t *testing.T) {
+	done := make(chan int)
+	ps := pubsub.New()
+	add := func() {
+		ps.Sub(func(i int) {
+			done <- i
+		})
+	}
+	add()
+	add()
+	ps.Pub(1)
+
+	time.AfterFunc(3*time.Second, func() {
+		close(done)
+	})
+	i1 := <-done
+	i2 := <-done
+	if i1 != 1 || i2 != 1 {
+		t.Fatal("Expected multiple subscribers")
 	}
 }
