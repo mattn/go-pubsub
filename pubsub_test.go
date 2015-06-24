@@ -92,3 +92,32 @@ func TestClojure(t *testing.T) {
 		t.Fatal("Expected multiple subscribers")
 	}
 }
+
+func TestLeave(t *testing.T) {
+	done := make(chan int)
+	ps := pubsub.New()
+
+	f := func(i int) {
+		done <- i
+	}
+	w1, w2 := pubsub.NewWrap(f), pubsub.NewWrap(f)
+	ps.Sub(w1)
+	ps.Sub(w2)
+	ps.Pub(1)
+	i1 := <-done
+	i2 := <-done
+	if i1 != 1 || i2 != 1 {
+		t.Fatal("Expected multiple subscribers")
+	}
+	ps.Leave(w2)
+	ps.Pub(2)
+	i1 = <-done
+	select {
+	case i2 = <-done:
+		t.Fatal("WTF")
+	default:
+	}
+	if i1 != 2 {
+		t.Fatal("Expected single subscribers")
+	}
+}

@@ -94,7 +94,12 @@ func (ps *PubSub) Error() chan error {
 
 // Sub subscribe to the PubSub.
 func (ps *PubSub) Sub(f interface{}) error {
-	rf := reflect.ValueOf(f)
+	check := f
+	w, wrapped := f.(*wrap)
+	if wrapped { // check wrapped function instead
+		check = w.f
+	}
+	rf := reflect.ValueOf(check)
 	if rf.Kind() != reflect.Func {
 		return errors.New("Not a function")
 	}
