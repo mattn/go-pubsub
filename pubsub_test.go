@@ -100,6 +100,30 @@ func TestLeave(t *testing.T) {
 	f := func(i int) {
 		done <- i
 	}
+	ps.Sub(f)
+	ps.Sub(f)
+	ps.Pub(1)
+	i1 := <-done
+	i2 := <-done
+	if i1 != 1 || i2 != 1 {
+		t.Fatal("Expected multiple subscribers")
+	}
+	ps.Leave(f)
+	ps.Pub(2)
+	select {
+	case <-done:
+		t.Fatal("WTF")
+	default:
+	}
+}
+
+func TestWrap(t *testing.T) {
+	done := make(chan int)
+	ps := pubsub.New()
+
+	f := func(i int) {
+		done <- i
+	}
 	w1, w2 := pubsub.NewWrap(f), pubsub.NewWrap(f)
 	ps.Sub(w1)
 	ps.Sub(w2)
@@ -119,5 +143,12 @@ func TestLeave(t *testing.T) {
 	}
 	if i1 != 2 {
 		t.Fatal("Expected single subscribers")
+	}
+	ps.Leave(w1)
+	ps.Pub(3)
+	select {
+	case <-done:
+		t.Fatal("WTF")
+	default:
 	}
 }
