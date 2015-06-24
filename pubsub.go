@@ -46,6 +46,10 @@ type wrap struct {
 	f interface{}
 }
 
+func NewWrap(f interface{}) *wrap {
+	return &wrap{f: f}
+}
+
 // PubSub contains channel and callbacks.
 type PubSub struct {
 	c chan interface{}
