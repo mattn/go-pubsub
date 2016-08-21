@@ -131,7 +131,8 @@ func (ps *PubSub) Leave(f interface{}) {
 	result := make([]*wrap, 0, len(ps.w))
 	last := 0
 	for i, v := range ps.w {
-		if reflect.ValueOf(v).Pointer() == fp {
+		vf := v.f
+		if reflect.ValueOf(vf).Pointer() == fp {
 			result = append(result, ps.w[last:i]...)
 			last = i + 1
 		}
